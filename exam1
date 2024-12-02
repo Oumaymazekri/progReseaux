@@ -1,0 +1,47 @@
+import yaml
+from netmiko import ConnectHandler
+
+
+def load_device_config(file_path):
+    try:
+        with open(file_path, 'r') as file:
+            return yaml.safe_load(file)
+    except Exception as e:
+        print(f"Erreur lors du chargement du fichier YAML : {e}")
+        return None
+
+
+device_config = load_device_config('device.yaml')
+
+if device_config:
+    try:
+        
+        connection = ConnectHandler(**device_config)
+        print("Connexion réussie au routeur.")
+
+        
+        show_clock = connection.send_command('show clock')
+        print("Date côté routeur :")
+        print(show_clock)
+
+        
+        interfaces = connection.send_command('show ip int br')
+        with open('interfaces.txt', 'w') as file:
+            file.write(interfaces)
+        print("Les interfaces ont été enregistrées dans 'interfaces.txt'.")
+
+        
+        config_commands = [
+            'interface loopback0',
+            'ip address 10.8.8.8 255.255.255.240',  # Masque /28
+        ]
+        connection.send_config_set(config_commands)
+        print("Interface Loopback configurée avec succès.")
+
+    except Exception as e:
+        print(f"Erreur : {e}")
+    finally:
+        connection.disconnect()
+        print("Connexion au routeur fermée.")
+else:
+    print("Impossible de charger la configuration du routeur.")
